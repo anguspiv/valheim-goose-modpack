@@ -1,2 +1,3 @@
-# valheim-goose-modpack
-A Modpack for my personal Valheim Games
+# Goose Modpack
+
+This is a personal modpack for Valheim. It is a work in progress and will be updated as I play the game.
