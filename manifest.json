@@ -1,8 +1,8 @@
 {
-  "name": "Goose Modpack",
-  "version": "1.0.0",
+  "name": "goose_modpack",
+  "version_number": "1.0.1",
   "description": "A modpack for Goose Valheim server",
-  "website": "https://github.com/anguspiv/valheim-goose-modpack",
+  "website_url": "https://github.com/anguspiv/valheim-goose-modpack",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2202",
     "OdinPlus-TeleportEverything-2.5.1",
