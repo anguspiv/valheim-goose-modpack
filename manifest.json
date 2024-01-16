@@ -1,12 +1,13 @@
 {
   "name": "goose_modpack",
-  "version_number": "1.0.2",
+  "version_number": "1.1.0",
   "description": "A modpack for Goose Valheim server",
   "website_url": "https://github.com/anguspiv/valheim-goose-modpack",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2202",
     "OdinPlus-TeleportEverything-2.5.1",
     "Smoothbrain-TargetPortal-1.1.16",
-    "Grantapher-ValheimPlus_Grantapher_Temporary-9.11.0"
+    "Grantapher-ValheimPlus_Grantapher_Temporary-9.11.0",
+    "RustyMods-PortalStations-1.0.6"
   ]
 }
