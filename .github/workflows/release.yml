@@ -1,0 +1,26 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  thunderstore-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Build Thunderstore zip (version must match the tag)
+        run: python3 scripts/build-thunderstore.py --out dist --expect-version "${GITHUB_REF_NAME#v}"
+      - name: Attach zip to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

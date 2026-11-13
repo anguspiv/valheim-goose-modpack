@@ -14,10 +14,19 @@ portal-station network, and ValheimPlus for the small tweaks.
 
 Built against Valheim 1.0.20. Everyone on the server needs the same versions.
 
-## PC (r2modman / Thunderstore)
+## Windows and macOS (mod manager)
 
-Install `goose_modpack` from the Valheim community on Thunderstore, or import
-this repo's `manifest.json` as a profile.
+1. Install [r2modman](https://thunderstore.io/c/valheim/p/ebkr/r2modman/) (or
+   Thunderstore Mod Manager) and pick Valheim.
+2. Online tab → search `goose_modpack` → Install. The manager pulls the mods
+   and this pack's `config/` settings.
+3. Launch Valheim through the manager's **Start modded** button. The plain
+   Steam shortcut launches vanilla, which the server rejects.
+
+Updates: the manager shows a pending update on the profile; click it. The
+server and the pack move together, so update when the server tells you to.
+
+Direct link: <https://thunderstore.io/c/valheim/p/anguspiv/goose_modpack/>
 
 ## Steam Deck (launch from Game Mode)
 
@@ -59,3 +68,22 @@ Notes:
 - To go back to vanilla, clear the Launch Options. The mods stay on disk but
   don't load.
 - From a local checkout instead: `python3 deck/install.py`.
+
+## Server images
+
+`deck/install.py --target DIR` resolves the same `manifest.json` into
+`DIR/BepInEx/plugins` and `DIR/BepInEx/config` without touching a game install,
+skipping the BepInEx core pack (the server image supplies its own). The
+[valheim-server](https://github.com/anguspiv/valheim-server) image bakes the
+pack in at build time from a release tag.
+
+## Releasing a new pack version
+
+1. Bump `version_number` in `manifest.json` (and the dependency pins).
+2. Merge to `main`, then tag and push: `git tag v2.0.0 && git push origin v2.0.0`.
+3. The release workflow runs the tests, builds `goose_modpack-2.0.0.zip` with
+   `scripts/build-thunderstore.py`, and attaches it to the GitHub release.
+4. Upload that zip at <https://thunderstore.io/package/create/> (team
+   `anguspiv`, community Valheim). Thunderstore refuses a version it already has,
+   so the manifest bump in step 1 is what makes the upload valid.
+5. Point the server at the tag (`MODPACK_REF` in the server repo).

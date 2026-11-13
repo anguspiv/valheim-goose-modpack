@@ -225,7 +225,12 @@ def main():
     ap.add_argument("--branch", default="main", help="branch to fetch with --remote (default: main)")
     ap.add_argument("--cache", default=os.path.expanduser("~/.cache/goose-modpack"), help="where downloaded zips are kept")
     ap.add_argument("--force", action="store_true", help="install even if Valheim appears to be running")
+    ap.add_argument("--target", help="server images: write BepInEx/plugins and BepInEx/config under this directory "
+                                     "instead of a game install; skips the BepInEx core pack, Steam discovery "
+                                     "and the running-game check")
     args = ap.parse_args()
+    if args.target and args.game_dir:
+        die("--target and --game-dir are mutually exclusive")
 
     if args.remote:
         pack_dir = fetch_repo(args.branch)
@@ -237,11 +242,16 @@ def main():
     with open(manifest_path) as f:
         manifest = json.load(f)
 
-    game_dir = find_game_dir(args.game_dir)
-    log(f"Valheim: {game_dir}")
+    if args.target:
+        game_dir = os.path.abspath(args.target)
+        os.makedirs(game_dir, exist_ok=True)
+        log(f"target: {game_dir}")
+    else:
+        game_dir = find_game_dir(args.game_dir)
+        log(f"Valheim: {game_dir}")
     log(f"modpack: {manifest['name']} {manifest['version_number']}")
 
-    if valheim_running() and not args.force:
+    if not args.target and valheim_running() and not args.force:
         die("Valheim is running. Quit it first (or pass --force).")
 
     log("resolving mods")
@@ -251,8 +261,11 @@ def main():
     if not bepinex:
         die("manifest has no BepInExPack_Valheim dependency")
     ver, zpath = resolved[bepinex[0]]
-    log(f"installing BepInEx pack {ver}")
-    install_bepinex(zpath, game_dir)
+    if args.target:
+        log(f"skipping BepInEx pack {ver} (the server image provides BepInEx)")
+    else:
+        log(f"installing BepInEx pack {ver}")
+        install_bepinex(zpath, game_dir)
 
     installed = []
     for (ns, name), (ver, zpath) in sorted(resolved.items()):
@@ -281,6 +294,8 @@ def main():
                 log(f"config {name}")
 
     log("done")
+    if args.target:
+        return
     print()
     print("Steam launch options for Valheim (set once; works in Game Mode and Desktop Mode):")
     print(f"    {LAUNCH_OPTIONS}")
