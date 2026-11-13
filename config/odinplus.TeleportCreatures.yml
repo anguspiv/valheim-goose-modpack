@@ -1,0 +1,30 @@
+# Local player preference. This file is never synchronized and can only restrict the server policy.
+# SearchRadius values are clamped to the server maximums. Player portal rules cannot override server rules.
+# Filters accept all/*, none, exact prefab names, and * / ? globs. Deny always wins.
+SchemaVersion: 1
+
+Allies:
+  # Disable allied-creature transport only for this player.
+  Enabled: true
+  # None, AllTamed, OnlyFollow, OnlyNamed, or AllTamedExceptNamed.
+  Mode: AllTamed
+  # Personal search limits; the server clamps them to its configured maximums.
+  SearchRadius: 10
+  SearchHeightRadius: 3
+  # Personal restrictions, applied in addition to the server's filters.
+  Allow: ["all"]
+  Deny: []
+
+  Teleport:
+    Portals:
+      # Disable creature transport through normal portals only for this player.
+      Enabled: true
+      # Optional personal portal rules. They can narrow, never expand, server policy.
+      Rules: []
+    Dungeons:
+      # Disable dungeon entrance and exit transport only for this player.
+      Enabled: true
+    Basements:
+      # Disable Basements transport only for this player.
+      Enabled: true
+
