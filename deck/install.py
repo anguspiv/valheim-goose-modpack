@@ -210,22 +210,54 @@ def install_mod(zpath, game_dir, pkg_folder):
                 shutil.copyfileobj(src, dst)
 
 
+CONFIG_SUFFIXES = (".cfg", ".yml", ".yaml")
+STALE_CONFIGS = ("valheim_plus.cfg", "valheim_plus.cfg.migrated")
+
+
 def copy_pack_configs(pack_dir, game_dir, target_mode):
-    """Copy the pack's config/*.cfg into BepInEx/config. Server images keep the
-    image's own BepInEx.cfg, so target mode skips the core loader config."""
+    """Copy the pack's config/*.cfg|yml|yaml into BepInEx/config. Server images
+    keep the image's own BepInEx.cfg, so target mode skips the core loader config."""
     cfg_src = os.path.join(pack_dir, "config")
     cfg_dst = os.path.join(game_dir, "BepInEx", "config")
     os.makedirs(cfg_dst, exist_ok=True)
     copied = []
     if os.path.isdir(cfg_src):
         for name in sorted(os.listdir(cfg_src)):
-            if not name.endswith(".cfg"):
+            if not name.endswith(CONFIG_SUFFIXES):
                 continue
             if target_mode and name == "BepInEx.cfg":
                 continue
             shutil.copy2(os.path.join(cfg_src, name), os.path.join(cfg_dst, name))
             copied.append(name)
     return copied
+
+
+def remove_stale_configs(game_dir):
+    """ValheimPlus 10.x reads an old-format valheim_plus.cfg in preference to its
+    BepInEx config when both exist. The pack ships only the new file, so drop the
+    old one and the .migrated copy V+ leaves behind."""
+    cfg_dst = os.path.join(game_dir, "BepInEx", "config")
+    removed = []
+    for name in STALE_CONFIGS:
+        p = os.path.join(cfg_dst, name)
+        if os.path.exists(p):
+            os.remove(p)
+            removed.append(name)
+    return removed
+
+
+def load_client_only(pack_dir):
+    """server.json lists packages that must not go on a dedicated server."""
+    p = os.path.join(pack_dir, "server.json")
+    if not os.path.isfile(p):
+        return []
+    with open(p) as f:
+        return list(json.load(f).get("client_only", []))
+
+
+def filter_client_only(resolved, client_only):
+    skip = set(client_only)
+    return {k: v for k, v in resolved.items() if f"{k[0]}-{k[1]}" not in skip}
 
 
 def check_expected_version(manifest, expected):
@@ -311,6 +343,11 @@ def main():
 
     log("resolving mods")
     resolved = resolve(manifest["dependencies"], args.cache)
+    if target_mode:
+        client_only = load_client_only(pack_dir)
+        for pkg in sorted(client_only):
+            log(f"skipping {pkg} (client-side only, not for the server)")
+        resolved = filter_client_only(resolved, client_only)
 
     bepinex = [k for k in resolved if is_bepinex_pack(*k)]
     if not bepinex:
@@ -339,6 +376,8 @@ def main():
             shutil.rmtree(os.path.join(game_dir, "BepInEx", sub, folder), ignore_errors=True)
     save_state(game_dir, installed)
 
+    for name in remove_stale_configs(game_dir):
+        log(f"removed stale {name}")
     for name in copy_pack_configs(pack_dir, game_dir, target_mode):
         log(f"config {name}")
 

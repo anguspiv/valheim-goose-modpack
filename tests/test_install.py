@@ -120,3 +120,41 @@ class CliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConfigCopyYamlAndStaleTests(unittest.TestCase):
+    def test_copies_yml_and_yaml_files_too(self):
+        with tempfile.TemporaryDirectory() as pack, tempfile.TemporaryDirectory() as game:
+            os.makedirs(os.path.join(pack, "config"))
+            for n in ("a.cfg", "odinplus.TeleportCarts.server.yml", "b.yaml", "notes.txt"):
+                with open(os.path.join(pack, "config", n), "w") as f:
+                    f.write(n)
+            copied = install.copy_pack_configs(pack, game, target_mode=False)
+            self.assertEqual(copied, ["a.cfg", "b.yaml", "odinplus.TeleportCarts.server.yml"])
+
+    def test_removes_stale_valheim_plus_files(self):
+        with tempfile.TemporaryDirectory() as game:
+            cfg = os.path.join(game, "BepInEx", "config")
+            os.makedirs(cfg)
+            for n in ("valheim_plus.cfg", "valheim_plus.cfg.migrated", "org.bepinex.plugins.valheim_plus.cfg"):
+                with open(os.path.join(cfg, n), "w") as f:
+                    f.write("x")
+            removed = install.remove_stale_configs(game)
+            self.assertEqual(sorted(removed), ["valheim_plus.cfg", "valheim_plus.cfg.migrated"])
+            self.assertEqual(tree(game), [os.path.join("BepInEx", "config", "org.bepinex.plugins.valheim_plus.cfg")])
+
+
+class ClientOnlyTests(unittest.TestCase):
+    def test_server_json_lists_client_only_packages_that_exist_in_manifest(self):
+        with open(os.path.join(REPO, "server.json")) as f:
+            client_only = json.load(f)["client_only"]
+        with open(os.path.join(REPO, "manifest.json")) as f:
+            deps = json.load(f)["dependencies"]
+        names = {"-".join(d.split("-")[:2]) for d in deps}
+        for pkg in client_only:
+            self.assertIn(pkg, names, pkg)
+
+    def test_filter_for_target_drops_client_only_packages(self):
+        resolved = {("Advize", "PlantEasily"): ("2.3.1", "/x.zip"), ("RustyMods", "PortalStations"): ("1.4.7", "/y.zip")}
+        kept = install.filter_client_only(resolved, ["Advize-PlantEasily"])
+        self.assertEqual(list(kept), [("RustyMods", "PortalStations")])
