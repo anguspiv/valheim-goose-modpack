@@ -14,7 +14,7 @@ portal-station network, and ValheimPlus for the small tweaks.
 
 Built against Valheim 1.0.20. Everyone on the server needs the same versions.
 
-## Windows and macOS (mod manager)
+## Windows (mod manager)
 
 1. Install [r2modman](https://thunderstore.io/c/valheim/p/ebkr/r2modman/) (or
    Thunderstore Mod Manager) and pick Valheim.
@@ -27,6 +27,11 @@ Updates: the manager shows a pending update on the profile; click it. The
 server and the pack move together, so update when the server tells you to.
 
 Direct link: <https://thunderstore.io/c/valheim/p/anguspiv/goose_modpack/>
+
+macOS is not covered by these tools: r2modman and Thunderstore Mod Manager
+have no macOS builds, and `deck/install.py` only knows the Linux game files.
+A manual BepInEx install on the native macOS build is possible but untested
+here; ask before trying.
 
 ## Steam Deck (launch from Game Mode)
 
@@ -71,9 +76,13 @@ Notes:
 
 ## Server images
 
-`deck/install.py --target DIR` resolves the same `manifest.json` into
-`DIR/BepInEx/plugins` and `DIR/BepInEx/config` without touching a game install,
-skipping the BepInEx core pack (the server image supplies its own). The
+`deck/install.py --target DIR [--expect-version X.Y.Z]` resolves the same
+`manifest.json` into `DIR/BepInEx/plugins`, `DIR/BepInEx/patchers` (if any mod
+ships one) and `DIR/BepInEx/config` without touching a game install. It skips
+the BepInEx core pack and `config/BepInEx.cfg`, because the server image
+supplies its own loader and loader config. `--expect-version` makes an
+unattended build fail if the checkout's manifest does not match the tag it
+asked for. Zip entries that would escape `DIR` abort the run. The
 [valheim-server](https://github.com/anguspiv/valheim-server) image bakes the
 pack in at build time from a release tag.
 

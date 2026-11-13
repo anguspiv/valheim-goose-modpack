@@ -133,19 +133,36 @@ def is_bepinex_pack(ns, name):
     return name == "BepInExPack_Valheim"
 
 
+def check_archive_parts(parts, archive_name):
+    """Refuse zip entries that could escape the install dir (.., absolute, backslashes)."""
+    for part in parts:
+        if part in ("", ".", "..") or "\\" in part:
+            die(f"refusing unsafe path in {archive_name}: {'/'.join(parts)!r}")
+
+
+def safe_dest(root, rel):
+    """Join rel onto root and prove the result stays inside root."""
+    dest = os.path.join(root, rel)
+    root_real = os.path.realpath(root)
+    if os.path.commonpath([root_real, os.path.realpath(dest)]) != root_real:
+        die(f"refusing to write outside {root}: {rel!r}")
+    return dest
+
+
 def install_bepinex(zpath, game_dir):
     with zipfile.ZipFile(zpath) as z:
         for info in z.infolist():
             if info.is_dir():
                 continue
             parts = info.filename.split("/")
+            check_archive_parts(parts, os.path.basename(zpath))
             if parts[0] != "BepInExPack_Valheim" or len(parts) < 2:
                 continue
             rel = os.path.join(*parts[1:])
             # Never clobber the pack's config dir; the modpack ships its own BepInEx.cfg
             if rel == os.path.join("BepInEx", "config", "BepInEx.cfg") and os.path.exists(os.path.join(game_dir, rel)):
                 continue
-            dest = os.path.join(game_dir, rel)
+            dest = safe_dest(game_dir, rel)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with z.open(info) as src, open(dest, "wb") as dst:
                 shutil.copyfileobj(src, dst)
@@ -179,16 +196,46 @@ def install_mod(zpath, game_dir, pkg_folder):
         for info in z.infolist():
             if info.is_dir():
                 continue
-            rel = plan_mod_file(info.filename.split("/"), pkg_folder)
+            parts = info.filename.split("/")
+            check_archive_parts(parts, os.path.basename(zpath))
+            rel = plan_mod_file(parts, pkg_folder)
             if rel is None:
                 continue
-            dest = os.path.join(game_dir, rel)
+            dest = safe_dest(game_dir, rel)
             # Don't overwrite a config the user/pack already has; mods regenerate missing ones
             if rel.startswith(os.path.join("BepInEx", "config")) and os.path.exists(dest):
                 continue
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with z.open(info) as src, open(dest, "wb") as dst:
                 shutil.copyfileobj(src, dst)
+
+
+def copy_pack_configs(pack_dir, game_dir, target_mode):
+    """Copy the pack's config/*.cfg into BepInEx/config. Server images keep the
+    image's own BepInEx.cfg, so target mode skips the core loader config."""
+    cfg_src = os.path.join(pack_dir, "config")
+    cfg_dst = os.path.join(game_dir, "BepInEx", "config")
+    os.makedirs(cfg_dst, exist_ok=True)
+    copied = []
+    if os.path.isdir(cfg_src):
+        for name in sorted(os.listdir(cfg_src)):
+            if not name.endswith(".cfg"):
+                continue
+            if target_mode and name == "BepInEx.cfg":
+                continue
+            shutil.copy2(os.path.join(cfg_src, name), os.path.join(cfg_dst, name))
+            copied.append(name)
+    return copied
+
+
+def check_expected_version(manifest, expected):
+    """Unattended builds pass the git tag; refuse a manifest that disagrees."""
+    if expected is None:
+        return
+    if not re.match(r"^\d+\.\d+\.\d+$", expected or ""):
+        die(f"--expect-version must look like X.Y.Z, got {expected!r}")
+    if str(manifest.get("version_number")) != expected:
+        die(f"manifest version_number {manifest.get('version_number')} does not match expected {expected}")
 
 
 def load_state(game_dir):
@@ -211,7 +258,10 @@ def fetch_repo(branch):
     with urlopen(url) as r:
         data = r.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as t:
-        t.extractall(tmp)
+        try:
+            t.extractall(tmp, filter="data")
+        except TypeError:  # Python < 3.12 has no filter argument
+            t.extractall(tmp)
     roots = [d for d in os.listdir(tmp) if os.path.isdir(os.path.join(tmp, d))]
     if len(roots) != 1:
         die("unexpected tarball layout")
@@ -228,8 +278,12 @@ def main():
     ap.add_argument("--target", help="server images: write BepInEx/plugins and BepInEx/config under this directory "
                                      "instead of a game install; skips the BepInEx core pack, Steam discovery "
                                      "and the running-game check")
+    ap.add_argument("--expect-version", help="fail unless manifest version_number equals this (pass the git tag without its v)")
     args = ap.parse_args()
-    if args.target and args.game_dir:
+    target_mode = args.target is not None
+    if target_mode and not args.target.strip():
+        die("--target must not be empty")
+    if target_mode and args.game_dir:
         die("--target and --game-dir are mutually exclusive")
 
     if args.remote:
@@ -241,8 +295,9 @@ def main():
         die(f"no manifest.json at {pack_dir} (use --remote if you piped this script in)")
     with open(manifest_path) as f:
         manifest = json.load(f)
+    check_expected_version(manifest, args.expect_version)
 
-    if args.target:
+    if target_mode:
         game_dir = os.path.abspath(args.target)
         os.makedirs(game_dir, exist_ok=True)
         log(f"target: {game_dir}")
@@ -251,7 +306,7 @@ def main():
         log(f"Valheim: {game_dir}")
     log(f"modpack: {manifest['name']} {manifest['version_number']}")
 
-    if not args.target and valheim_running() and not args.force:
+    if not target_mode and valheim_running() and not args.force:
         die("Valheim is running. Quit it first (or pass --force).")
 
     log("resolving mods")
@@ -261,7 +316,7 @@ def main():
     if not bepinex:
         die("manifest has no BepInExPack_Valheim dependency")
     ver, zpath = resolved[bepinex[0]]
-    if args.target:
+    if target_mode:
         log(f"skipping BepInEx pack {ver} (the server image provides BepInEx)")
     else:
         log(f"installing BepInEx pack {ver}")
@@ -284,17 +339,11 @@ def main():
             shutil.rmtree(os.path.join(game_dir, "BepInEx", sub, folder), ignore_errors=True)
     save_state(game_dir, installed)
 
-    cfg_src = os.path.join(pack_dir, "config")
-    cfg_dst = os.path.join(game_dir, "BepInEx", "config")
-    os.makedirs(cfg_dst, exist_ok=True)
-    if os.path.isdir(cfg_src):
-        for name in sorted(os.listdir(cfg_src)):
-            if name.endswith(".cfg"):
-                shutil.copy2(os.path.join(cfg_src, name), os.path.join(cfg_dst, name))
-                log(f"config {name}")
+    for name in copy_pack_configs(pack_dir, game_dir, target_mode):
+        log(f"config {name}")
 
     log("done")
-    if args.target:
+    if target_mode:
         return
     print()
     print("Steam launch options for Valheim (set once; works in Game Mode and Desktop Mode):")

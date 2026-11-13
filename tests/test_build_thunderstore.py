@@ -51,3 +51,36 @@ class BuildThunderstoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BuildThunderstoreHardeningTests(unittest.TestCase):
+    def test_empty_expect_version_is_rejected(self):
+        with tempfile.TemporaryDirectory() as out:
+            r = run("--out", out, "--expect-version", "")
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("expect-version", r.stderr)
+
+    def test_wrong_size_png_icon_is_rejected(self):
+        import struct
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as out:
+            for name in ("manifest.json", "README.md"):
+                with open(os.path.join(REPO, name)) as f, open(os.path.join(src, name), "w") as g:
+                    g.write(f.read())
+            header = b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">II", 128, 128) + b"\x08\x06\x00\x00\x00"
+            with open(os.path.join(src, "icon.png"), "wb") as g:
+                g.write(header)
+            r = run("--out", out, "--src", src)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("256x256", r.stderr)
+
+    def test_manifest_name_description_and_dependencies_are_validated(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as out:
+            for name in ("README.md", "icon.png"):
+                with open(os.path.join(REPO, name), "rb") as f, open(os.path.join(src, name), "wb") as g:
+                    g.write(f.read())
+            bad = {"name": "goose modpack", "version_number": "2.0.0", "website_url": "", "description": "x" * 251, "dependencies": ["not-a-dep"]}
+            with open(os.path.join(src, "manifest.json"), "w") as g:
+                json.dump(bad, g)
+            r = run("--out", out, "--src", src)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertRegex(r.stderr, r"name|description|dependenc")

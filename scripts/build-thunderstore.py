@@ -18,7 +18,10 @@ import sys
 import zipfile
 
 REQUIRED_MANIFEST_KEYS = ("name", "version_number", "website_url", "description", "dependencies")
-VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+VERSION_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+DEPENDENCY_RE = re.compile(r"^[A-Za-z0-9_]+-[A-Za-z0-9_]+-\d+\.\d+\.\d+$")
+MAX_DESCRIPTION = 250
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -38,8 +41,16 @@ def load_manifest(src):
             fail(f"manifest.json lacks '{key}'")
     if not VERSION_RE.match(str(manifest["version_number"])):
         fail(f"version_number '{manifest['version_number']}' is not X.Y.Z")
-    if not isinstance(manifest["dependencies"], list) or not manifest["dependencies"]:
+    if not NAME_RE.match(str(manifest["name"])):
+        fail(f"name '{manifest['name']}' must be letters, digits and underscores only")
+    if len(str(manifest["description"])) > MAX_DESCRIPTION:
+        fail(f"description is {len(str(manifest['description']))} characters; Thunderstore allows {MAX_DESCRIPTION}")
+    deps = manifest["dependencies"]
+    if not isinstance(deps, list) or not deps:
         fail("manifest.json dependencies must be a non-empty list")
+    for dep in deps:
+        if not DEPENDENCY_RE.match(str(dep)):
+            fail(f"dependency '{dep}' is not Namespace-Name-X.Y.Z")
     return manifest
 
 
@@ -58,8 +69,11 @@ def check_icon(src):
 
 def build(src, out, expect_version=None):
     manifest = load_manifest(src)
-    if expect_version and str(manifest["version_number"]) != expect_version:
-        fail(f"manifest version_number {manifest['version_number']} does not match expected {expect_version}")
+    if expect_version is not None:
+        if not VERSION_RE.match(expect_version):
+            fail(f"--expect-version must be X.Y.Z, got '{expect_version}' (a bare 'v' tag?)")
+        if str(manifest["version_number"]) != expect_version:
+            fail(f"manifest version_number {manifest['version_number']} does not match expected {expect_version}")
     check_icon(src)
     if not os.path.isfile(os.path.join(src, "README.md")):
         fail("missing README.md")
