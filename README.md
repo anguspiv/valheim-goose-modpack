@@ -5,14 +5,25 @@ portal-station network, and ValheimPlus for the small tweaks.
 
 ## Mods
 
-| Mod | What it does |
-| --- | --- |
-| [ValheimPlus (Grantapher)](https://thunderstore.io/c/valheim/p/Grantapher/ValheimPlus_Grantapher_Temporary/) | Building, beehive, stamina and other QoL tweaks. Settings live in `config/valheim_plus.cfg`. |
-| [TeleportEverything](https://thunderstore.io/c/valheim/p/OdinPlus/TeleportEverything/) | Take ore, carts, boats and tames through portals. Configure in-game with Left Shift + Up Arrow. |
-| [PortalStations](https://thunderstore.io/c/valheim/p/RustyMods/PortalStations/) | Buildable portal stations with a pick-any-destination list, plus a personal teleporter. |
-| [BepInExPack_Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) | The mod loader. |
+| Mod | Where | What it does |
+| --- | --- | --- |
+| [ValheimPlus (Grantapher)](https://thunderstore.io/c/valheim/p/Grantapher/ValheimPlus_Grantapher_Temporary/) | server + client | Craft and build from nearby chests, auto fuel and auto deposit on every station, auto-repair, auto stack-all on chest open, bigger chests and carry weight, no structural integrity, 2x gathering and drops. Settings in `config/org.bepinex.plugins.valheim_plus.cfg`, synced from the server. |
+| [PortalStations](https://thunderstore.io/c/valheim/p/RustyMods/PortalStations/) | server + client | Buildable portal stations with a pick-any-destination list, plus a personal teleporter. Teleport anything, device needs no fuel, anyone can rename. |
+| [TeleportCreatures](https://thunderstore.io/c/valheim/p/OdinPlus/TeleportCreatures/) | server + client | Tames that are following you come through portals (`OnlyFollow` by default). |
+| [TeleportCarts](https://thunderstore.io/c/valheim/p/OdinPlus/TeleportCarts/) | server + client | An attached cart comes through portals and dungeon doors with you. |
+| [Quick Stack Store Sort Trash Restock](https://thunderstore.io/c/valheim/p/Goldenrevolver/Quick_Stack_Store_Sort_Trash_Restock/) | client only | Restock, trash, sort and quick-stack buttons; area stacking into nearby chests enabled. |
+| [PlantEasily](https://thunderstore.io/c/valheim/p/Advize/PlantEasily/) | client only | Plant in rows and grids with the cultivator, bulk harvest, replant on harvest. Controller bindings built in. |
+| [BepInExPack_Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) | server + client | The mod loader. |
 
-Built against Valheim 1.0.20. Everyone on the server needs the same versions.
+Built against Valheim 1.0.21. Everyone on the server needs the same versions;
+`Server.enforceMod` is on, so a client without ValheimPlus is refused.
+
+Client-only mods are listed in `server.json` and are not installed on the
+dedicated server. Every value that differs from a mod's default, and why, is in
+`docs/config-decisions-2.1.0.md`. The `config/` files are the mods' own
+generated defaults with those values applied; `deck/pull-configs.sh` copies
+freshly generated files back from a Steam Deck when a mod update changes the
+schema.
 
 ## Windows (mod manager)
 
