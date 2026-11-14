@@ -107,7 +107,10 @@ pack in at build time from a release tag.
 2. Merge to `main`, then tag and push: `git tag v2.1.0 && git push origin v2.1.0`.
 3. The release workflow runs the tests, builds `goose_modpack-2.1.0.zip` with
    `scripts/build-thunderstore.py`, and attaches it to the GitHub release.
-4. Upload that zip at <https://thunderstore.io/package/create/> (team
-   `anguspiv`, community Valheim). Thunderstore refuses a version it already has,
-   so the manifest bump in step 1 is what makes the upload valid.
+4. The same workflow publishes the zip to Thunderstore with `tcli` when the
+   repository secret `TCLI_AUTH_TOKEN` is set (a service-account token from the
+   Thunderstore team page, Settings → Service Accounts). Without the secret,
+   upload the zip by hand at <https://thunderstore.io/package/create/> (team
+   `anguspiv`, community Valheim). Thunderstore refuses a version it already
+   has, so the manifest bump in step 1 is what makes the upload valid.
 5. Point the server at the tag (`MODPACK_REF` in the server repo).
