@@ -118,9 +118,6 @@ class CliTests(unittest.TestCase):
         self.assertIn("mutually exclusive", r.stderr + r.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class ConfigCopyYamlAndStaleTests(unittest.TestCase):
     def test_copies_yml_and_yaml_files_too(self):
@@ -140,8 +137,9 @@ class ConfigCopyYamlAndStaleTests(unittest.TestCase):
                 with open(os.path.join(cfg, n), "w") as f:
                     f.write("x")
             removed = install.remove_stale_configs(game)
-            self.assertEqual(sorted(removed), ["valheim_plus.cfg", "valheim_plus.cfg.migrated"])
-            self.assertEqual(tree(game), [os.path.join("BepInEx", "config", "org.bepinex.plugins.valheim_plus.cfg")])
+            self.assertEqual(removed, ["valheim_plus.cfg"])
+            # V+'s own backup of the player's pre-10.x settings stays.
+            self.assertEqual(tree(game), [os.path.join("BepInEx", "config", "org.bepinex.plugins.valheim_plus.cfg"), os.path.join("BepInEx", "config", "valheim_plus.cfg.migrated")])
 
 
 class ClientOnlyTests(unittest.TestCase):
@@ -154,7 +152,14 @@ class ClientOnlyTests(unittest.TestCase):
         for pkg in client_only:
             self.assertIn(pkg, names, pkg)
 
-    def test_filter_for_target_drops_client_only_packages(self):
-        resolved = {("Advize", "PlantEasily"): ("2.3.1", "/x.zip"), ("RustyMods", "PortalStations"): ("1.4.7", "/y.zip")}
-        kept = install.filter_client_only(resolved, ["Advize-PlantEasily"])
-        self.assertEqual(list(kept), [("RustyMods", "PortalStations")])
+    def test_filter_for_target_drops_client_only_dependency_strings_before_resolve(self):
+        deps = ["Advize-PlantEasily-2.3.1", "RustyMods-PortalStations-1.4.7", "denikson-BepInExPack_Valheim-5.4.2360"]
+        kept = install.filter_client_only(deps, ["Advize-PlantEasily"])
+        self.assertEqual(kept, ["RustyMods-PortalStations-1.4.7", "denikson-BepInExPack_Valheim-5.4.2360"])
+
+    def test_load_client_only_without_server_json_is_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(install.load_client_only(d), [])
+
+if __name__ == "__main__":
+    unittest.main()

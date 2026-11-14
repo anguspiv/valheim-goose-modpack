@@ -7,7 +7,7 @@ portal-station network, and ValheimPlus for the small tweaks.
 
 | Mod | Where | What it does |
 | --- | --- | --- |
-| [ValheimPlus (Grantapher)](https://thunderstore.io/c/valheim/p/Grantapher/ValheimPlus_Grantapher_Temporary/) | server + client | Craft and build from nearby chests, auto fuel and auto deposit on every station, auto-repair, auto stack-all on chest open, bigger chests and carry weight, no structural integrity, 2x gathering and drops. Settings in `config/org.bepinex.plugins.valheim_plus.cfg`, synced from the server. |
+| [ValheimPlus (Grantapher)](https://thunderstore.io/c/valheim/p/Grantapher/ValheimPlus_Grantapher_Temporary/) | server + client | Craft and build from nearby chests, auto fuel and auto deposit on every station, auto-repair, auto stack-all on chest open, bigger chests and carry weight, no structural integrity, 2x gathering and drops. Settings in `config/org.bepinex.plugins.valheim_plus.cfg`, mostly synced from the server (HUD, FOV and keybinds stay per player). |
 | [PortalStations](https://thunderstore.io/c/valheim/p/RustyMods/PortalStations/) | server + client | Buildable portal stations with a pick-any-destination list, plus a personal teleporter. Teleport anything, device needs no fuel, anyone can rename. |
 | [TeleportCreatures](https://thunderstore.io/c/valheim/p/OdinPlus/TeleportCreatures/) | server + client | Tames that are following you come through portals (`OnlyFollow` by default). |
 | [TeleportCarts](https://thunderstore.io/c/valheim/p/OdinPlus/TeleportCarts/) | server + client | An attached cart comes through portals and dungeon doors with you. |
@@ -15,7 +15,7 @@ portal-station network, and ValheimPlus for the small tweaks.
 | [PlantEasily](https://thunderstore.io/c/valheim/p/Advize/PlantEasily/) | client only | Plant in rows and grids with the cultivator, bulk harvest, replant on harvest. Controller bindings built in. |
 | [BepInExPack_Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) | server + client | The mod loader. |
 
-Built against Valheim 1.0.21. Everyone on the server needs the same versions;
+Built against Valheim 1.0.21 (ValheimPlus 10.4.0 lists 1.0.20 as tested). Everyone on the server needs the same versions;
 `Server.enforceMod` is on, so a client without ValheimPlus is refused.
 
 Client-only mods are listed in `server.json` and are not installed on the
@@ -38,6 +38,10 @@ Updates: the manager shows a pending update on the profile; click it. The
 server and the pack move together, so update when the server tells you to.
 
 Direct link: <https://thunderstore.io/c/valheim/p/anguspiv/goose_modpack/>
+
+Upgrading from 2.0.0 or earlier: delete `BepInEx/config/valheim_plus.cfg` in the
+profile folder (r2modman: Settings → Browse profile folder). ValheimPlus 10.x
+prefers that old file when present and ignores the pack's new one.
 
 macOS is not covered by these tools: r2modman and Thunderstore Mod Manager
 have no macOS builds, and `deck/install.py` only knows the Linux game files.
@@ -100,8 +104,8 @@ pack in at build time from a release tag.
 ## Releasing a new pack version
 
 1. Bump `version_number` in `manifest.json` (and the dependency pins).
-2. Merge to `main`, then tag and push: `git tag v2.0.0 && git push origin v2.0.0`.
-3. The release workflow runs the tests, builds `goose_modpack-2.0.0.zip` with
+2. Merge to `main`, then tag and push: `git tag v2.1.0 && git push origin v2.1.0`.
+3. The release workflow runs the tests, builds `goose_modpack-2.1.0.zip` with
    `scripts/build-thunderstore.py`, and attaches it to the GitHub release.
 4. Upload that zip at <https://thunderstore.io/package/create/> (team
    `anguspiv`, community Valheim). Thunderstore refuses a version it already has,

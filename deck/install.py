@@ -211,7 +211,7 @@ def install_mod(zpath, game_dir, pkg_folder):
 
 
 CONFIG_SUFFIXES = (".cfg", ".yml", ".yaml")
-STALE_CONFIGS = ("valheim_plus.cfg", "valheim_plus.cfg.migrated")
+STALE_CONFIGS = ("valheim_plus.cfg",)
 
 
 def copy_pack_configs(pack_dir, game_dir, target_mode):
@@ -235,7 +235,7 @@ def copy_pack_configs(pack_dir, game_dir, target_mode):
 def remove_stale_configs(game_dir):
     """ValheimPlus 10.x reads an old-format valheim_plus.cfg in preference to its
     BepInEx config when both exist. The pack ships only the new file, so drop the
-    old one and the .migrated copy V+ leaves behind."""
+    old one. valheim_plus.cfg.migrated is V+'s backup of the player's settings and stays."""
     cfg_dst = os.path.join(game_dir, "BepInEx", "config")
     removed = []
     for name in STALE_CONFIGS:
@@ -255,9 +255,12 @@ def load_client_only(pack_dir):
         return list(json.load(f).get("client_only", []))
 
 
-def filter_client_only(resolved, client_only):
+def filter_client_only(dependencies, client_only):
+    """Drop client-only packages from the manifest list before resolving, so their
+    private transitive dependencies never reach the server while shared ones still
+    arrive through the server-side mods."""
     skip = set(client_only)
-    return {k: v for k, v in resolved.items() if f"{k[0]}-{k[1]}" not in skip}
+    return [d for d in dependencies if "-".join(d.split("-")[:2]) not in skip]
 
 
 def check_expected_version(manifest, expected):
@@ -341,13 +344,15 @@ def main():
     if not target_mode and valheim_running() and not args.force:
         die("Valheim is running. Quit it first (or pass --force).")
 
-    log("resolving mods")
-    resolved = resolve(manifest["dependencies"], args.cache)
+    dependencies = manifest["dependencies"]
     if target_mode:
         client_only = load_client_only(pack_dir)
         for pkg in sorted(client_only):
-            log(f"skipping {pkg} (client-side only, not for the server)")
-        resolved = filter_client_only(resolved, client_only)
+            if any("-".join(d.split("-")[:2]) == pkg for d in dependencies):
+                log(f"skipping {pkg} (client-side only, not for the server)")
+        dependencies = filter_client_only(dependencies, client_only)
+    log("resolving mods")
+    resolved = resolve(dependencies, args.cache)
 
     bepinex = [k for k in resolved if is_bepinex_pack(*k)]
     if not bepinex:
