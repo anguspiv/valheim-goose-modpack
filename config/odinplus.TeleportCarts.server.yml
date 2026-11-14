@@ -1,0 +1,27 @@
+# Server policy. This file is synchronized to clients.
+# The server owns transport availability and placement numbers. A player file can only narrow them.
+# Native ore teleport rules always apply to cart cargo; they are never overridden.
+SchemaVersion: 1
+
+Carts:
+  # Disable cart transport for every player.
+  Enabled: true
+  # Attached-cart detection radius around the teleporting player.
+  SearchRadius: 10
+
+  Teleport:
+    Portals:
+      # Disable cart transport through normal and stone portals.
+      Enabled: true
+    Dungeons:
+      # Covers both dungeon entrances and exits.
+      Enabled: true
+    Basements:
+      # Requires the Basements mod on the server.
+      Enabled: true
+
+Placement:
+  # Drop the cart this far ahead of the player's arrival point.
+  ForwardOffset: 0.8
+  # Reattach only when the cart is within this distance of the arrived player.
+  ReattachRadius: 15

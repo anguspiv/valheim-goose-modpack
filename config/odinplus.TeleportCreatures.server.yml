@@ -1,0 +1,95 @@
+# Server policy. This file is synchronized to clients.
+# Filters accept all/*, none, exact prefab names, and * / ? globs. Deny always wins.
+# Portal rules use the lowest Priority number first (1 is strongest; omitted is 100).
+# Equal priorities keep YAML order. Tags are portal link text; Prefabs are portal prefab names.
+# A rule Allow narrows server Allow. It never expands the server's global creature ceiling.
+SchemaVersion: 2
+
+Allies:
+  # Disable all allied-creature transport for every player.
+  Enabled: true
+  # Hard limits for each player's local SearchRadius and SearchHeightRadius.
+  MaximumSearchRadius: 20
+  MaximumSearchHeightRadius: 8
+  # The server's global creature ceiling. These filters apply before portal rules.
+  Allow: ["all"]
+  Deny: []
+
+  Teleport:
+    Portals:
+      # Disable creature transport through every normal portal.
+      Enabled: true
+      Rules:
+        # These neutral defaults allow every server-allowed ally through Wood and Stone portals.
+        # Add a source-specific rule with Priority: 1..99 to override them.
+        - Id: "wood-portals"
+          Source:
+            Prefabs: ["portal_wood"]
+          Allow: ["all"]
+          Deny: []
+
+        - Id: "stone-portals"
+          Source:
+            Prefabs: ["portal_stone"]
+          Allow: ["all"]
+          Deny: []
+
+    Dungeons:
+      # Covers both dungeon entrances and exits.
+      Enabled: true
+    Basements:
+      # Requires the Basements mod on the server.
+      Enabled: true
+  Placement:
+    # Search radius for ally placement in normal portals.
+    Radius: 10
+    MaximumHeightDifference: 3
+    DistanceFromPlayer: 3
+    Spacing: 2.5
+    Water: Allow
+    Dungeons:
+      Radius: 12
+      RequireNaturalGroundOnExit: true
+    Basements:
+      Radius: 8
+      RequireClearance: true
+
+Enemies:
+  # Enemy transport is opt-in and controlled by this server policy.
+  Enabled: false
+  MaximumSearchRadius: 20
+  MaximumSearchHeightRadius: 8
+  Allow: ["all"]
+  Deny: []
+  Teleport:
+    Portals:
+      Enabled: true
+      Rules:
+        # Neutral defaults allow all server-allowed enemies through Wood and Stone portals.
+        - Id: "wood-enemy-portals"
+          Source:
+            Prefabs: ["portal_wood"]
+          Allow: ["all"]
+          Deny: []
+        - Id: "stone-enemy-portals"
+          Source:
+            Prefabs: ["portal_stone"]
+          Allow: ["all"]
+          Deny: []
+    Dungeons:
+      Enabled: true
+    Basements:
+      Enabled: false
+
+  Placement:
+    Radius: 12
+    MaximumHeightDifference: 3
+    DistanceFromPlayer: 6
+    Spacing: 2.5
+    Water: Allow
+    Dungeons:
+      Radius: 12
+      RequireNaturalGroundOnExit: true
+    Basements:
+      Radius: 8
+      RequireClearance: true

@@ -28,7 +28,7 @@ class BuildThunderstoreTests(unittest.TestCase):
             self.assertIn("manifest.json", names)
             self.assertIn("README.md", names)
             self.assertIn("icon.png", names)
-            self.assertIn("config/valheim_plus.cfg", names)
+            self.assertIn("config/org.bepinex.plugins.valheim_plus.cfg", names)
             self.assertFalse(any(n.startswith("deck/") or n.startswith(".git") for n in names), names)
 
     def test_rejects_manifest_version_that_does_not_match_tag(self):
@@ -84,3 +84,21 @@ class BuildThunderstoreHardeningTests(unittest.TestCase):
             r = run("--out", out, "--src", src)
             self.assertNotEqual(r.returncode, 0)
             self.assertRegex(r.stderr, r"name|description|dependenc")
+
+
+class BuildThunderstoreYamlTests(unittest.TestCase):
+    def test_zip_includes_yml_and_yaml_configs(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as out:
+            for name in ("manifest.json", "README.md", "icon.png"):
+                with open(os.path.join(REPO, name), "rb") as f, open(os.path.join(src, name), "wb") as g:
+                    g.write(f.read())
+            os.makedirs(os.path.join(src, "config"))
+            for n in ("a.cfg", "b.server.yml", "c.yaml", "ignore.txt"):
+                with open(os.path.join(src, "config", n), "w") as g:
+                    g.write(n)
+            r = run("--out", out, "--src", src)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            with zipfile.ZipFile(r.stdout.strip()) as z:
+                names = set(z.namelist())
+            self.assertTrue({"config/a.cfg", "config/b.server.yml", "config/c.yaml"} <= names, names)
+            self.assertNotIn("config/ignore.txt", names)

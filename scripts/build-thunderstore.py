@@ -4,7 +4,7 @@
     python3 scripts/build-thunderstore.py [--out dist] [--src .] [--expect-version X.Y.Z]
 
 The zip holds manifest.json, README.md, icon.png, CHANGELOG.md if present, and
-config/*.cfg. r2modman and Thunderstore Mod Manager copy a package's config/
+config/*.cfg, *.yml, *.yaml. r2modman and Thunderstore Mod Manager copy a package's config/
 folder into BepInEx/config, so friends get the pack's settings on install.
 Fails loudly on a bad manifest or icon so a broken upload never reaches the
 site. Standard library only.
@@ -88,7 +88,7 @@ def build(src, out, expect_version=None):
         cfg_dir = os.path.join(src, "config")
         if os.path.isdir(cfg_dir):
             for name in sorted(os.listdir(cfg_dir)):
-                if name.endswith(".cfg"):
+                if name.endswith((".cfg", ".yml", ".yaml")):
                     z.write(os.path.join(cfg_dir, name), f"config/{name}")
     print(zip_path)
     return zip_path

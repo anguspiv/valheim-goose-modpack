@@ -1,0 +1,7 @@
+{
+  "_comment": "Read by deck/install.py --target (server images). Packages listed here are client-side only and are not installed on the dedicated server.",
+  "client_only": [
+    "Goldenrevolver-Quick_Stack_Store_Sort_Trash_Restock",
+    "Advize-PlantEasily"
+  ]
+}

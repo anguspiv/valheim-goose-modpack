@@ -118,5 +118,48 @@ class CliTests(unittest.TestCase):
         self.assertIn("mutually exclusive", r.stderr + r.stdout)
 
 
+
+class ConfigCopyYamlAndStaleTests(unittest.TestCase):
+    def test_copies_yml_and_yaml_files_too(self):
+        with tempfile.TemporaryDirectory() as pack, tempfile.TemporaryDirectory() as game:
+            os.makedirs(os.path.join(pack, "config"))
+            for n in ("a.cfg", "odinplus.TeleportCarts.server.yml", "b.yaml", "notes.txt"):
+                with open(os.path.join(pack, "config", n), "w") as f:
+                    f.write(n)
+            copied = install.copy_pack_configs(pack, game, target_mode=False)
+            self.assertEqual(copied, ["a.cfg", "b.yaml", "odinplus.TeleportCarts.server.yml"])
+
+    def test_removes_stale_valheim_plus_files(self):
+        with tempfile.TemporaryDirectory() as game:
+            cfg = os.path.join(game, "BepInEx", "config")
+            os.makedirs(cfg)
+            for n in ("valheim_plus.cfg", "valheim_plus.cfg.migrated", "org.bepinex.plugins.valheim_plus.cfg"):
+                with open(os.path.join(cfg, n), "w") as f:
+                    f.write("x")
+            removed = install.remove_stale_configs(game)
+            self.assertEqual(removed, ["valheim_plus.cfg"])
+            # V+'s own backup of the player's pre-10.x settings stays.
+            self.assertEqual(tree(game), [os.path.join("BepInEx", "config", "org.bepinex.plugins.valheim_plus.cfg"), os.path.join("BepInEx", "config", "valheim_plus.cfg.migrated")])
+
+
+class ClientOnlyTests(unittest.TestCase):
+    def test_server_json_lists_client_only_packages_that_exist_in_manifest(self):
+        with open(os.path.join(REPO, "server.json")) as f:
+            client_only = json.load(f)["client_only"]
+        with open(os.path.join(REPO, "manifest.json")) as f:
+            deps = json.load(f)["dependencies"]
+        names = {"-".join(d.split("-")[:2]) for d in deps}
+        for pkg in client_only:
+            self.assertIn(pkg, names, pkg)
+
+    def test_filter_for_target_drops_client_only_dependency_strings_before_resolve(self):
+        deps = ["Advize-PlantEasily-2.3.1", "RustyMods-PortalStations-1.4.7", "denikson-BepInExPack_Valheim-5.4.2360"]
+        kept = install.filter_client_only(deps, ["Advize-PlantEasily"])
+        self.assertEqual(kept, ["RustyMods-PortalStations-1.4.7", "denikson-BepInExPack_Valheim-5.4.2360"])
+
+    def test_load_client_only_without_server_json_is_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(install.load_client_only(d), [])
+
 if __name__ == "__main__":
     unittest.main()
