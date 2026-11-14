@@ -55,7 +55,13 @@ MACOS_GAME_DIR_CANDIDATES = [
     "/Volumes/*/steamapps/common/Valheim",
 ]
 MACOS_APP = "Valheim.app"
-MACOS_LAUNCH_OPTIONS = "./start_game_bepinex.sh %command%"
+
+
+def macos_launch_options(game_dir):
+    """Steam on macOS runs the launch option's first word as given, not from the
+    game folder, so "./start_game_bepinex.sh" fails with OS Error 260. Use the
+    script's absolute path, quoted for the space in "Application Support"."""
+    return f'"{os.path.join(os.path.abspath(game_dir), "start_game_bepinex.sh")}" %command%'
 
 
 def log(msg):
@@ -118,7 +124,8 @@ def find_macos_game_dir(explicit, candidates=None):
 
 
 def valheim_running():
-    patterns = ["valheim.x86_64", "Valheim.app/Contents/MacOS/"]
+    # Steam starts the macOS game as .../valheim.app/Contents/MacOS/Valheim (lowercase .app)
+    patterns = ["valheim.x86_64", ".app/Contents/MacOS/Valheim"]
     try:
         for pattern in patterns:
             if subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).returncode == 0:
@@ -525,7 +532,8 @@ def main():
     print()
     if macos:
         print("Steam launch options for Valheim (Library → Valheim → Properties → Launch Options):")
-        print(f"    {MACOS_LAUNCH_OPTIONS}")
+        print(f"    {macos_launch_options(game_dir)}")
+        print("Paste the whole line, quotes included, replacing anything already there.")
     else:
         print("Steam launch options for Valheim (set once; works in Game Mode and Desktop Mode):")
         print(f"    {LAUNCH_OPTIONS}")

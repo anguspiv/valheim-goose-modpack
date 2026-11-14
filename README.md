@@ -72,9 +72,13 @@ of Valheim.
    Options:
 
    ```
-   ./start_game_bepinex.sh %command%
+   "/Users/YOU/Library/Application Support/Steam/steamapps/common/Valheim/start_game_bepinex.sh" %command%
    ```
 
+   The installer prints this line with your real path; paste it whole,
+   quotes included. It must be the absolute path: Steam on macOS does not run
+   the launch option from the game folder, so `./start_game_bepinex.sh`
+   fails with "Failed to start process for this game : OS Error 260".
    Replace anything already there. An older manual BepInEx install used
    `run_bepinex.sh`, which the current pack no longer ships; a launch option
    pointing at it stops the game from starting.
