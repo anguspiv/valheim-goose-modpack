@@ -1,6 +1,6 @@
 {
   "name": "goose_modpack",
-  "version_number": "2.1.0",
+  "version_number": "2.1.1",
   "description": "A casual quality-of-life modpack for the Goose Valheim server",
   "website_url": "https://github.com/anguspiv/valheim-goose-modpack",
   "dependencies": [
