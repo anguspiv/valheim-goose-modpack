@@ -7,7 +7,7 @@ Allies:
   # Disable allied-creature transport only for this player.
   Enabled: true
   # None, AllTamed, OnlyFollow, OnlyNamed, or AllTamedExceptNamed.
-  Mode: AllTamed
+  Mode: OnlyFollow
   # Personal search limits; the server clamps them to its configured maximums.
   SearchRadius: 10
   SearchHeightRadius: 3
