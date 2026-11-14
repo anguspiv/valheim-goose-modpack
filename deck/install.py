@@ -141,6 +141,31 @@ def set_launcher_executable(script_path, app_name):
     return n == 1
 
 
+def is_apple_silicon():
+    """True on Apple Silicon, also when this Python runs under Rosetta.
+    Intel Macs have no hw.optional.arm64 sysctl."""
+    try:
+        r = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True)
+    except FileNotFoundError:
+        return False
+    return r.returncode == 0 and r.stdout.strip() == "1"
+
+
+def set_arch_preference(script_path, apple_silicon):
+    """The pack's default archpreference="arm64,x86_64" makes arch(1) exit with
+    "Unknown architecture: arm64" on an Intel Mac before the game starts. Intel
+    gets "x86_64"; Apple Silicon keeps the pack's native-first default."""
+    if apple_silicon:
+        return False
+    with open(script_path) as f:
+        text = f.read()
+    new, n = re.subn(r'(?m)^archpreference=".*"$', 'archpreference="x86_64"', text, count=1)
+    if n and new != text:
+        with open(script_path, "w") as f:
+            f.write(new)
+    return n == 1
+
+
 def clear_quarantine(paths):
     """Gatekeeper refuses to load a quarantined libdoorstop dylib. Files this script
     writes are not quarantined, but a pack unzipped by Finder or a browser is."""
@@ -153,12 +178,16 @@ def clear_quarantine(paths):
         pass
 
 
-def prepare_macos(game_dir):
+def prepare_macos(game_dir, apple_silicon=None):
+    if apple_silicon is None:
+        apple_silicon = is_apple_silicon()
     script = os.path.join(game_dir, "start_game_bepinex.sh")
     if not os.path.isfile(script):
         die("BepInEx pack did not provide start_game_bepinex.sh")
     if not set_launcher_executable(script, macos_app_name(game_dir)):
         log("warning: could not set executable_name in start_game_bepinex.sh")
+    if set_arch_preference(script, apple_silicon):
+        log('macOS: Intel Mac, set archpreference="x86_64" in start_game_bepinex.sh')
     os.chmod(script, os.stat(script).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     clear_quarantine([os.path.join(game_dir, "BepInEx"), os.path.join(game_dir, "doorstop_libs"), script])
 
