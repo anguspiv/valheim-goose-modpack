@@ -240,6 +240,21 @@ class MacOSTests(unittest.TestCase):
         self.assertEqual(install.macos_launch_options(d),
                          '"/Users/x/Library/Application Support/Steam/steamapps/common/Valheim/start_game_bepinex.sh" %command%')
 
+    def test_language_pref_written_only_when_missing(self):
+        class Run:
+            def __init__(self, read_rc, read_out=""):
+                self.calls, self.read_rc, self.read_out = [], read_rc, read_out
+            def __call__(self, cmd, **kw):
+                self.calls.append(cmd)
+                rc = self.read_rc if cmd[1] == "read" else 0
+                return subprocess.CompletedProcess(cmd, rc, stdout=self.read_out if cmd[1] == "read" else "", stderr="")
+        missing = Run(read_rc=1)
+        self.assertTrue(install.ensure_language_pref(run=missing))
+        self.assertEqual(missing.calls[-1], ["defaults", "write", "com.coffeestain.valheim-steam", "language", "-string", "English"])
+        present = Run(read_rc=0, read_out="German\n")
+        self.assertFalse(install.ensure_language_pref(run=present))
+        self.assertEqual([c[1] for c in present.calls], ["read"])
+
     def test_loose_plugin_dlls_are_reported(self):
         with tempfile.TemporaryDirectory() as d:
             plugins = os.path.join(d, "BepInEx", "plugins")
