@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the Goose modpack into a Steam Deck / Linux Valheim install.
+"""Install the Goose modpack into a Steam Deck / Linux or macOS Valheim install.
 
 Reads manifest.json, downloads every Thunderstore dependency (recursively),
 installs BepInEx into the game folder, puts each mod in BepInEx/plugins/<pkg>/,
@@ -11,6 +11,9 @@ Run it again any time the manifest or configs change. Nothing else to manage.
 Usage (on the Deck, or over SSH from another machine):
     python3 deck/install.py              # from a checkout of the repo
     python3 deck/install.py --game-dir /run/media/mmcblk0p1/steamapps/common/Valheim
+
+On a Mac (native Steam build, Intel or Apple Silicon):
+    python3 deck/install.py              # finds ~/Library/Application Support/Steam/.../Valheim
 
 One-liner with no checkout (fetches the repo tarball first):
     curl -fsSL https://raw.githubusercontent.com/anguspiv/valheim-goose-modpack/main/deck/install.py | python3 - --remote
@@ -46,6 +49,14 @@ GAME_DIR_CANDIDATES = [
     "/run/media/deck/*/SteamLibrary/steamapps/common/Valheim",
 ]
 
+MACOS_GAME_DIR_CANDIDATES = [
+    "~/Library/Application Support/Steam/steamapps/common/Valheim",
+    "/Volumes/*/SteamLibrary/steamapps/common/Valheim",
+    "/Volumes/*/steamapps/common/Valheim",
+]
+MACOS_APP = "Valheim.app"
+MACOS_LAUNCH_OPTIONS = "./start_game_bepinex.sh %command%"
+
 
 def log(msg):
     print(f"[goose] {msg}", flush=True)
@@ -56,25 +67,109 @@ def die(msg):
     sys.exit(1)
 
 
-def find_game_dir(explicit):
+def is_linux_game_dir(d):
+    return os.path.isfile(os.path.join(d, "valheim.x86_64"))
+
+
+def macos_app_name(d):
+    """Name of the Valheim .app bundle in d, or None. Matched case-insensitively
+    so a case-sensitive volume holding valheim.app still counts."""
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return None
+    for name in names:
+        if name.lower() == MACOS_APP.lower() and os.path.isdir(os.path.join(d, name)):
+            return name
+    return None
+
+
+def is_macos_game_dir(d):
+    return macos_app_name(d) is not None
+
+
+def find_game_dir(explicit, platform=None):
+    platform = platform or sys.platform
+    if platform == "darwin":
+        return find_macos_game_dir(explicit)
     if explicit:
         d = os.path.expanduser(explicit)
-        if not os.path.isfile(os.path.join(d, "valheim.x86_64")):
+        if not is_linux_game_dir(d):
             die(f"{d} does not look like a Linux Valheim install (no valheim.x86_64)")
         return d
     for pattern in GAME_DIR_CANDIDATES:
         for d in glob.glob(os.path.expanduser(pattern)):
-            if os.path.isfile(os.path.join(d, "valheim.x86_64")):
+            if is_linux_game_dir(d):
+                return d
+    die("Could not find Valheim. Install it from Steam first, or pass --game-dir.")
+
+
+def find_macos_game_dir(explicit, candidates=None):
+    if explicit:
+        d = os.path.expanduser(explicit)
+        if not is_macos_game_dir(d):
+            die(f"{d} does not look like a macOS Valheim install (no {MACOS_APP})")
+        return d
+    for pattern in candidates or MACOS_GAME_DIR_CANDIDATES:
+        for d in sorted(glob.glob(os.path.expanduser(pattern))):
+            if is_macos_game_dir(d):
                 return d
     die("Could not find Valheim. Install it from Steam first, or pass --game-dir.")
 
 
 def valheim_running():
+    patterns = ["valheim.x86_64", "Valheim.app/Contents/MacOS/"]
     try:
-        out = subprocess.run(["pgrep", "-f", "valheim.x86_64"], capture_output=True, text=True)
-        return out.returncode == 0
+        for pattern in patterns:
+            if subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True).returncode == 0:
+                return True
+        return False
     except FileNotFoundError:
         return False
+
+
+def set_launcher_executable(script_path, app_name):
+    """The pack's start_game_bepinex.sh names the Linux binary. On macOS point it at
+    the .app so the script also works when run by hand (Steam passes %command%,
+    which the script prefers anyway)."""
+    with open(script_path) as f:
+        text = f.read()
+    new, n = re.subn(r'(?m)^executable_name=".*"$', f'executable_name="{app_name}"', text, count=1)
+    if n and new != text:
+        with open(script_path, "w") as f:
+            f.write(new)
+    return n == 1
+
+
+def clear_quarantine(paths):
+    """Gatekeeper refuses to load a quarantined libdoorstop dylib. Files this script
+    writes are not quarantined, but a pack unzipped by Finder or a browser is."""
+    existing = [p for p in paths if os.path.exists(p)]
+    if not existing:
+        return
+    try:
+        subprocess.run(["xattr", "-dr", "com.apple.quarantine", *existing], capture_output=True, check=False)
+    except FileNotFoundError:
+        pass
+
+
+def prepare_macos(game_dir):
+    script = os.path.join(game_dir, "start_game_bepinex.sh")
+    if not os.path.isfile(script):
+        die("BepInEx pack did not provide start_game_bepinex.sh")
+    if not set_launcher_executable(script, macos_app_name(game_dir)):
+        log("warning: could not set executable_name in start_game_bepinex.sh")
+    os.chmod(script, os.stat(script).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    clear_quarantine([os.path.join(game_dir, "BepInEx"), os.path.join(game_dir, "doorstop_libs"), script])
+
+
+def loose_plugin_files(game_dir):
+    """DLLs sitting directly in BepInEx/plugins come from a manual install, not from
+    this script. They load alongside the pack (an old ValheimPlus.dll would clash)."""
+    d = os.path.join(game_dir, "BepInEx", "plugins")
+    if not os.path.isdir(d):
+        return []
+    return sorted(n for n in os.listdir(d) if n.lower().endswith(".dll") and os.path.isfile(os.path.join(d, n)))
 
 
 def parse_dep(dep):
@@ -339,6 +434,7 @@ def main():
     else:
         game_dir = find_game_dir(args.game_dir)
         log(f"Valheim: {game_dir}")
+    macos = not target_mode and is_macos_game_dir(game_dir)
     log(f"modpack: {manifest['name']} {manifest['version_number']}")
 
     if not target_mode and valheim_running() and not args.force:
@@ -363,6 +459,9 @@ def main():
     else:
         log(f"installing BepInEx pack {ver}")
         install_bepinex(zpath, game_dir)
+        if macos:
+            prepare_macos(game_dir)
+            log("macOS: start_game_bepinex.sh made executable, quarantine cleared")
 
     installed = []
     for (ns, name), (ver, zpath) in sorted(resolved.items()):
@@ -386,13 +485,22 @@ def main():
     for name in copy_pack_configs(pack_dir, game_dir, target_mode):
         log(f"config {name}")
 
+    if not target_mode:
+        for name in loose_plugin_files(game_dir):
+            log(f"warning: BepInEx/plugins/{name} is not from this modpack and will also load; "
+                "move it out if it is an old copy of a pack mod")
+
     log("done")
     if target_mode:
         return
     print()
-    print("Steam launch options for Valheim (set once; works in Game Mode and Desktop Mode):")
-    print(f"    {LAUNCH_OPTIONS}")
-    print("If modded launch flashes and dies, append:  -compat-force-slr off")
+    if macos:
+        print("Steam launch options for Valheim (Library → Valheim → Properties → Launch Options):")
+        print(f"    {MACOS_LAUNCH_OPTIONS}")
+    else:
+        print("Steam launch options for Valheim (set once; works in Game Mode and Desktop Mode):")
+        print(f"    {LAUNCH_OPTIONS}")
+        print("If modded launch flashes and dies, append:  -compat-force-slr off")
     print("Mods installed:")
     for folder in installed:
         print(f"    {folder}")
