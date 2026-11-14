@@ -63,7 +63,11 @@ of Valheim.
    BepInEx and the mods into the same `BepInEx/` layout as the Deck, points
    `start_game_bepinex.sh` at `Valheim.app`, makes it executable, and clears
    the `com.apple.quarantine` flag on `BepInEx/`, `doorstop_libs/` and the
-   script so Gatekeeper does not block the Doorstop dylib. On an Intel Mac it
+   script so Gatekeeper does not block the Doorstop dylib. If Valheim has no
+   saved language it saves `English` (Valheim's own fallback): without one,
+   PortalStations fails during startup (`Steamworks is not initialized` in
+   the log) and the server refuses you with "Server expects you to have
+   RustyMods.PortalStations ItemManager ... installed". On an Intel Mac it
    also sets `archpreference="x86_64"` in the script: the pack's default
    `arm64,x86_64` makes `arch` exit with `Unknown architecture: arm64` before
    the game starts. Apple Silicon keeps the native default; if mods don't
@@ -89,7 +93,8 @@ of Valheim.
 
 Tested on an Intel MacBook Pro (i9-9980HK, macOS 26.7.1), Valheim 1.0.21:
 BepInEx 5.4.23.6 loads all 6 plugins natively as x86_64 and the main menu
-shows `ValheimPlus 10.4.0.0 (Grantapher)`. Apple Silicon is not tested yet.
+shows `ValheimPlus 10.4.0.0 (Grantapher)`; joining the server works.
+Apple Silicon is not tested yet.
 
 If you modded Valheim by hand before, the installer warns about DLLs sitting
 loose in `BepInEx/plugins/` (an old `ValheimPlus.dll` there would load next

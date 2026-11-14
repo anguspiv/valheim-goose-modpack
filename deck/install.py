@@ -185,6 +185,27 @@ def clear_quarantine(paths):
         pass
 
 
+MACOS_PREFS_DOMAIN = "com.coffeestain.valheim-steam"
+
+
+def ensure_language_pref(run=subprocess.run, domain=MACOS_PREFS_DOMAIN):
+    """With no saved language, Valheim's Localization looks the key up through
+    PlatformPrefs migration, which calls SteamUtils.IsSteamRunningOnSteamDeck.
+    PortalStations touches Localization in its Awake, before Steam is up, so that
+    throws "Steamworks is not initialized" and PortalStations never registers its
+    ItemManager/PieceManager: the server then refuses the client. Saving the
+    language Valheim already falls back to (English) avoids it. Returns True
+    when it wrote the key."""
+    try:
+        r = run(["defaults", "read", domain, "language"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return False
+        w = run(["defaults", "write", domain, "language", "-string", "English"], capture_output=True, text=True)
+        return w.returncode == 0
+    except FileNotFoundError:
+        return False
+
+
 def prepare_macos(game_dir, apple_silicon=None):
     if apple_silicon is None:
         apple_silicon = is_apple_silicon()
@@ -498,6 +519,9 @@ def main():
         if macos:
             prepare_macos(game_dir)
             log("macOS: start_game_bepinex.sh made executable, quarantine cleared")
+            if ensure_language_pref():
+                log("macOS: saved Valheim language = English (no language was set; "
+                    "PortalStations fails to load without one). Change it in game Settings if you like.")
 
     installed = []
     for (ns, name), (ver, zpath) in sorted(resolved.items()):
