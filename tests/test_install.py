@@ -213,13 +213,27 @@ class MacOSTests(unittest.TestCase):
             with open(script, "w") as f:
                 f.write('#!/bin/sh\n# LINUX: name of Unity executable\nexecutable_name="valheim.x86_64"\narchpreference="arm64,x86_64"\n')
             os.chmod(script, 0o644)
-            install.prepare_macos(d)
+            install.prepare_macos(d, apple_silicon=True)
             with open(script) as f:
                 text = f.read()
             self.assertIn('executable_name="Valheim.app"\n', text)
             self.assertNotIn("valheim.x86_64", text)
+            # Apple Silicon keeps the pack's native-first default
             self.assertIn('archpreference="arm64,x86_64"', text)
             self.assertTrue(os.access(script, os.X_OK))
+
+    def test_intel_mac_gets_x86_64_only_arch_preference(self):
+        # arch(1) on Intel exits "Unknown architecture: arm64" with the pack default
+        with tempfile.TemporaryDirectory() as root:
+            d = self.make_mac_game(root)
+            script = os.path.join(d, "start_game_bepinex.sh")
+            with open(script, "w") as f:
+                f.write('executable_name="valheim.x86_64"\narchpreference="arm64,x86_64"\n')
+            install.prepare_macos(d, apple_silicon=False)
+            with open(script) as f:
+                text = f.read()
+            self.assertIn('archpreference="x86_64"\n', text)
+            self.assertNotIn("arm64", text)
 
     def test_loose_plugin_dlls_are_reported(self):
         with tempfile.TemporaryDirectory() as d:
