@@ -1,0 +1,18 @@
+# Used by tcli (thunderstore-cli) in .github/workflows/release.yml to publish the
+# zip that scripts/build-thunderstore.py built. Package metadata comes from the
+# zip's manifest.json; this file only names where it goes.
+[config]
+schemaVersion = "0.0.1"
+
+[general]
+repository = "https://thunderstore.io"
+
+[package]
+namespace = "anguspiv"
+name = "goose_modpack"
+
+[publish]
+communities = ["valheim"]
+
+[publish.categories]
+valheim = ["modpacks"]
