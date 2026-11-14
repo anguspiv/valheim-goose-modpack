@@ -75,6 +75,10 @@ of Valheim.
    ./start_game_bepinex.sh %command%
    ```
 
+   Replace anything already there. An older manual BepInEx install used
+   `run_bepinex.sh`, which the current pack no longer ships; a launch option
+   pointing at it stops the game from starting.
+
 4. Launch Valheim from Steam. `BepInEx/LogOutput.log` in the game folder
    should list the plugins loading, and the main menu shows the ValheimPlus
    version.
