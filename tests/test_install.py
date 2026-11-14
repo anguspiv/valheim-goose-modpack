@@ -235,6 +235,11 @@ class MacOSTests(unittest.TestCase):
             self.assertIn('archpreference="x86_64"\n', text)
             self.assertNotIn("arm64", text)
 
+    def test_macos_launch_options_use_quoted_absolute_script_path(self):
+        d = "/Users/x/Library/Application Support/Steam/steamapps/common/Valheim"
+        self.assertEqual(install.macos_launch_options(d),
+                         '"/Users/x/Library/Application Support/Steam/steamapps/common/Valheim/start_game_bepinex.sh" %command%')
+
     def test_loose_plugin_dlls_are_reported(self):
         with tempfile.TemporaryDirectory() as d:
             plugins = os.path.join(d, "BepInEx", "plugins")
