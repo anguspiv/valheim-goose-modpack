@@ -161,5 +161,74 @@ class ClientOnlyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertEqual(install.load_client_only(d), [])
 
+
+class MacOSTests(unittest.TestCase):
+    def make_mac_game(self, root, app="Valheim.app"):
+        d = os.path.join(root, "steamapps", "common", "Valheim")
+        os.makedirs(os.path.join(d, app, "Contents", "MacOS"))
+        with open(os.path.join(d, app, "Contents", "MacOS", "Valheim"), "w") as f:
+            f.write("")
+        return d
+
+    def test_explicit_game_dir_with_valheim_app_is_accepted(self):
+        with tempfile.TemporaryDirectory() as root:
+            d = self.make_mac_game(root)
+            self.assertEqual(install.find_game_dir(d, platform="darwin"), d)
+            self.assertTrue(install.is_macos_game_dir(d))
+            self.assertFalse(install.is_linux_game_dir(d))
+
+    def test_lowercase_app_name_on_case_sensitive_volume(self):
+        with tempfile.TemporaryDirectory() as root:
+            d = self.make_mac_game(root, app="valheim.app")
+            self.assertEqual(install.macos_app_name(d), "valheim.app")
+
+    def test_auto_detect_from_candidate_paths(self):
+        with tempfile.TemporaryDirectory() as root:
+            d = self.make_mac_game(root)
+            pattern = os.path.join(root, "*", "common", "Valheim")
+            self.assertEqual(install.find_macos_game_dir(None, candidates=[pattern]), d)
+
+    def test_dir_without_valheim_app_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(SystemExit):
+                install.find_game_dir(d, platform="darwin")
+            # A file named Valheim.app is not an app bundle
+            open(os.path.join(d, "Valheim.app"), "w").close()
+            with self.assertRaises(SystemExit):
+                install.find_game_dir(d, platform="darwin")
+
+    def test_linux_detection_unchanged(self):
+        with tempfile.TemporaryDirectory() as root:
+            mac = self.make_mac_game(root)
+            with self.assertRaises(SystemExit):
+                install.find_game_dir(mac, platform="linux")
+        with tempfile.TemporaryDirectory() as lin:
+            open(os.path.join(lin, "valheim.x86_64"), "w").close()
+            self.assertEqual(install.find_game_dir(lin, platform="linux"), lin)
+
+    def test_prepare_macos_points_script_at_app_and_makes_it_executable(self):
+        with tempfile.TemporaryDirectory() as root:
+            d = self.make_mac_game(root)
+            script = os.path.join(d, "start_game_bepinex.sh")
+            with open(script, "w") as f:
+                f.write('#!/bin/sh\n# LINUX: name of Unity executable\nexecutable_name="valheim.x86_64"\narchpreference="arm64,x86_64"\n')
+            os.chmod(script, 0o644)
+            install.prepare_macos(d)
+            with open(script) as f:
+                text = f.read()
+            self.assertIn('executable_name="Valheim.app"\n', text)
+            self.assertNotIn("valheim.x86_64", text)
+            self.assertIn('archpreference="arm64,x86_64"', text)
+            self.assertTrue(os.access(script, os.X_OK))
+
+    def test_loose_plugin_dlls_are_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            plugins = os.path.join(d, "BepInEx", "plugins")
+            os.makedirs(os.path.join(plugins, "ns-Mod"))
+            open(os.path.join(plugins, "ns-Mod", "Mod.dll"), "w").close()
+            open(os.path.join(plugins, "ValheimPlus.dll"), "w").close()
+            self.assertEqual(install.loose_plugin_files(d), ["ValheimPlus.dll"])
+
+
 if __name__ == "__main__":
     unittest.main()

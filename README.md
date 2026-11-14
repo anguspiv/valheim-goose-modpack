@@ -43,10 +43,42 @@ Upgrading from 2.0.0 or earlier: delete `BepInEx/config/valheim_plus.cfg` in the
 profile folder (r2modman: Settings → Browse profile folder). ValheimPlus 10.x
 prefers that old file when present and ignores the pack's new one.
 
-macOS is not covered by these tools: r2modman and Thunderstore Mod Manager
-have no macOS builds, and `deck/install.py` only knows the Linux game files.
-A manual BepInEx install on the native macOS build is possible but untested
-here; ask before trying.
+## macOS (script install)
+
+r2modman and Thunderstore Mod Manager have no macOS builds, so on a Mac the
+same `deck/install.py` installs the pack straight into the native Steam build
+of Valheim.
+
+1. Install Valheim from Steam and let it finish updating. Quit the game.
+2. In Terminal (Python 3 ships with the Xcode command line tools; run
+   `xcode-select --install` if `python3` is missing):
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/anguspiv/valheim-goose-modpack/main/deck/install.py | python3 - --remote
+   ```
+
+   It finds `~/Library/Application Support/Steam/steamapps/common/Valheim`
+   (or a `SteamLibrary` on an external drive under `/Volumes`) by looking for
+   `Valheim.app`; pass `--game-dir` if yours is elsewhere. It installs
+   BepInEx and the mods into the same `BepInEx/` layout as the Deck, points
+   `start_game_bepinex.sh` at `Valheim.app`, makes it executable, and clears
+   the `com.apple.quarantine` flag on `BepInEx/`, `doorstop_libs/` and the
+   script so Gatekeeper does not block the Doorstop dylib.
+3. Steam → Library → right-click Valheim → Properties → General → Launch
+   Options:
+
+   ```
+   ./start_game_bepinex.sh %command%
+   ```
+
+4. Launch Valheim from Steam. `BepInEx/LogOutput.log` in the game folder
+   should list the plugins loading, and the main menu shows the ValheimPlus
+   version.
+
+If you modded Valheim by hand before, the installer warns about DLLs sitting
+loose in `BepInEx/plugins/` (an old `ValheimPlus.dll` there would load next
+to the pack's copy). Move them out. To update, re-run the same command. To
+go back to vanilla, clear the Launch Options.
 
 ## Steam Deck (launch from Game Mode)
 
